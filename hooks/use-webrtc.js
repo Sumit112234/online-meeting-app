@@ -22,18 +22,21 @@ export function useWebRTC(meetingId, currentUser, participants) {
   const [isVideoOn, setIsVideoOn] = useState(true)
   const [isMicOn, setIsMicOn] = useState(true)
   const [isPresenting, setIsPresenting] = useState(false)
+  const [videoQuality, setVideoQuality] = useState("720p")
 
   const peerConnections = useRef({}) // { userId: RTCPeerConnection }
   const processedOffers = useRef(new Set())
   const processedAnswers = useRef(new Set())
   const processedCandidates = useRef(new Set())
+  const localStreamRef = useRef(null)
 
-  // Initialize local media stream
   useEffect(() => {
     const initLocalStream = async () => {
-      const { stream, error } = await getUserMedia({ video: true, audio: true })
+      const { stream, error } = await getUserMedia({ video: videoQuality, audio: true })
       if (stream) {
         setLocalStream(stream)
+        localStreamRef.current = stream
+        console.log("[v0] Local stream initialized with quality:", videoQuality)
       } else {
         console.error("Failed to get local stream:", error)
       }
@@ -44,40 +47,44 @@ export function useWebRTC(meetingId, currentUser, participants) {
     }
 
     return () => {
-      // Cleanup on unmount
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop())
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop())
       }
     }
-  }, [currentUser])
+  }, [currentUser, videoQuality])
 
   // Create peer connection for a remote user
   const createPeerConnection = useCallback(
     (remoteUserId) => {
       if (peerConnections.current[remoteUserId]) {
+        console.log("[v0] Peer connection already exists for", remoteUserId)
         return peerConnections.current[remoteUserId]
       }
 
+      console.log("[v0] Creating new peer connection for", remoteUserId)
       const pc = new RTCPeerConnection(iceServers)
 
-      // Add local stream tracks to peer connection
-      if (localStream) {
-        localStream.getTracks().forEach((track) => {
-          pc.addTrack(track, localStream)
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          console.log("[v0] Adding track to peer connection:", track.kind, "for", remoteUserId)
+          pc.addTrack(track, localStreamRef.current)
         })
       }
 
-      // Handle incoming remote stream
       pc.ontrack = (event) => {
-        console.log("[v0] Received remote track from", remoteUserId)
+        console.log("[v0] Received remote track from", remoteUserId, "kind:", event.track.kind)
         const [remoteStream] = event.streams
-        setRemoteStreams((prev) => ({
-          ...prev,
-          [remoteUserId]: remoteStream,
-        }))
+        if (remoteStream) {
+          setRemoteStreams((prev) => {
+            console.log("[v0] Setting remote stream for", remoteUserId)
+            return {
+              ...prev,
+              [remoteUserId]: remoteStream,
+            }
+          })
+        }
       }
 
-      // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           console.log("[v0] Sending ICE candidate to", remoteUserId)
@@ -85,9 +92,12 @@ export function useWebRTC(meetingId, currentUser, participants) {
         }
       }
 
-      // Handle connection state changes
       pc.onconnectionstatechange = () => {
         console.log("[v0] Connection state with", remoteUserId, ":", pc.connectionState)
+        if (pc.connectionState === "failed") {
+          console.log("[v0] Connection failed, attempting restart for", remoteUserId)
+          pc.restartIce()
+        }
         if (
           pc.connectionState === "disconnected" ||
           pc.connectionState === "failed" ||
@@ -98,32 +108,40 @@ export function useWebRTC(meetingId, currentUser, participants) {
             delete updated[remoteUserId]
             return updated
           })
+          delete peerConnections.current[remoteUserId]
         }
+      }
+
+      pc.oniceconnectionstatechange = () => {
+        console.log("[v0] ICE connection state with", remoteUserId, ":", pc.iceConnectionState)
       }
 
       peerConnections.current[remoteUserId] = pc
       return pc
     },
-    [meetingId, currentUser, localStream],
+    [meetingId, currentUser],
   )
 
-  // Handle new participant joining
   useEffect(() => {
-    if (!currentUser || !localStream || !participants || participants.length === 0) return
+    if (!currentUser || !localStreamRef.current || !participants || participants.length === 0) {
+      return
+    }
 
-    // Create offers for all other participants
-    participants.forEach(async (participant) => {
-      if (participant.uid !== currentUser.uid && !peerConnections.current[participant.uid]) {
-        console.log("[v0] Creating offer for", participant.uid)
-        const pc = createPeerConnection(participant.uid)
-        await createOffer(meetingId, currentUser.uid, participant.uid, pc)
+    const createOffersForParticipants = async () => {
+      for (const participant of participants) {
+        if (participant.uid !== currentUser.uid && !peerConnections.current[participant.uid]) {
+          console.log("[v0] Creating offer for new participant", participant.uid)
+          const pc = createPeerConnection(participant.uid)
+          await createOffer(meetingId, currentUser.uid, participant.uid, pc)
+        }
       }
-    })
-  }, [participants, currentUser, localStream, meetingId, createPeerConnection])
+    }
 
-  // Listen for incoming offers
+    createOffersForParticipants()
+  }, [participants, currentUser, meetingId, createPeerConnection, localStream])
+
   useEffect(() => {
-    if (!currentUser || !localStream) return
+    if (!currentUser || !localStreamRef.current) return
 
     const unsubscribe = listenForOffers(meetingId, currentUser.uid, async (fromUserId, offer) => {
       const offerId = `${fromUserId}-${offer.timestamp}`
@@ -135,6 +153,7 @@ export function useWebRTC(meetingId, currentUser, participants) {
 
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(offer))
+        console.log("[v0] Creating answer for", fromUserId)
         await createAnswer(meetingId, currentUser.uid, fromUserId, pc)
       } catch (error) {
         console.error("Error handling offer:", error)
@@ -142,7 +161,7 @@ export function useWebRTC(meetingId, currentUser, participants) {
     })
 
     return unsubscribe
-  }, [meetingId, currentUser, localStream, createPeerConnection])
+  }, [meetingId, currentUser, createPeerConnection, localStream])
 
   // Listen for incoming answers
   useEffect(() => {
@@ -198,45 +217,48 @@ export function useWebRTC(meetingId, currentUser, participants) {
     return unsubscribe
   }, [meetingId, currentUser])
 
-  // Toggle video
   const toggleVideo = useCallback(async () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0]
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0]
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled
         setIsVideoOn(videoTrack.enabled)
         await updateParticipantState(meetingId, currentUser.uid, { isVideoOn: videoTrack.enabled })
       }
     }
-  }, [localStream, meetingId, currentUser])
+  }, [meetingId, currentUser])
 
-  // Toggle microphone
   const toggleMic = useCallback(async () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0]
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0]
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled
         setIsMicOn(audioTrack.enabled)
         await updateParticipantState(meetingId, currentUser.uid, { isMicOn: audioTrack.enabled })
       }
     }
-  }, [localStream, meetingId, currentUser])
+  }, [meetingId, currentUser])
 
-  // Start screen share
   const startScreenShare = useCallback(async () => {
     const { stream, error } = await getDisplayMedia()
     if (stream) {
       const screenTrack = stream.getVideoTracks()[0]
 
-      // Replace video track in all peer connections
-      Object.values(peerConnections.current).forEach((pc) => {
+      Object.entries(peerConnections.current).forEach(([userId, pc]) => {
         const sender = pc.getSenders().find((s) => s.track?.kind === "video")
         if (sender) {
-          sender.replaceTrack(screenTrack)
+          console.log("[v0] Replacing video track with screen share for", userId)
+          sender.replaceTrack(screenTrack).catch((err) => console.error("Replace track error:", err))
         }
       })
 
-      // Handle screen share end
+      const oldVideoTrack = localStreamRef.current?.getVideoTracks()[0]
+      if (oldVideoTrack) {
+        localStreamRef.current.removeTrack(oldVideoTrack)
+        localStreamRef.current.addTrack(screenTrack)
+        setLocalStream(localStreamRef.current)
+      }
+
       screenTrack.onended = () => {
         stopScreenShare()
       }
@@ -249,33 +271,76 @@ export function useWebRTC(meetingId, currentUser, participants) {
     }
   }, [meetingId, currentUser])
 
-  // Stop screen share
   const stopScreenShare = useCallback(async () => {
     if (screenStream) {
       screenStream.getTracks().forEach((track) => track.stop())
 
-      // Restore camera track
-      if (localStream) {
-        const videoTrack = localStream.getVideoTracks()[0]
-        Object.values(peerConnections.current).forEach((pc) => {
+      const { stream: newCameraStream } = await getUserMedia({ video: videoQuality, audio: true })
+      if (newCameraStream) {
+        const newVideoTrack = newCameraStream.getVideoTracks()[0]
+
+        Object.entries(peerConnections.current).forEach(([userId, pc]) => {
           const sender = pc.getSenders().find((s) => s.track?.kind === "video")
-          if (sender && videoTrack) {
-            sender.replaceTrack(videoTrack)
+          if (sender && newVideoTrack) {
+            console.log("[v0] Restoring camera track for", userId)
+            sender.replaceTrack(newVideoTrack).catch((err) => console.error("Replace track error:", err))
           }
         })
+
+        // Stop old tracks and update local stream
+        const oldVideoTrack = localStreamRef.current?.getVideoTracks()[0]
+        if (oldVideoTrack) {
+          oldVideoTrack.stop()
+          localStreamRef.current.removeTrack(oldVideoTrack)
+        }
+        localStreamRef.current.addTrack(newVideoTrack)
+        setLocalStream(localStreamRef.current)
       }
 
       setScreenStream(null)
       setIsPresenting(false)
       await updateParticipantState(meetingId, currentUser.uid, { isPresenting: false })
     }
-  }, [screenStream, localStream, meetingId, currentUser])
+  }, [screenStream, meetingId, currentUser, videoQuality])
+
+  const changeVideoQuality = useCallback(
+    async (quality) => {
+      if (isPresenting) {
+        console.log("[v0] Cannot change quality while presenting")
+        return
+      }
+
+      const { stream: newStream } = await getUserMedia({ video: quality, audio: true })
+      if (newStream) {
+        const newVideoTrack = newStream.getVideoTracks()[0]
+
+        Object.entries(peerConnections.current).forEach(([userId, pc]) => {
+          const sender = pc.getSenders().find((s) => s.track?.kind === "video")
+          if (sender) {
+            console.log("[v0] Updating video quality for", userId)
+            sender.replaceTrack(newVideoTrack).catch((err) => console.error("Replace track error:", err))
+          }
+        })
+
+        // Stop old tracks and update local stream
+        const oldVideoTrack = localStreamRef.current?.getVideoTracks()[0]
+        if (oldVideoTrack) {
+          oldVideoTrack.stop()
+          localStreamRef.current.removeTrack(oldVideoTrack)
+        }
+        localStreamRef.current.addTrack(newVideoTrack)
+        setLocalStream(localStreamRef.current)
+        setVideoQuality(quality)
+      }
+    },
+    [isPresenting],
+  )
 
   // Leave meeting
   const leaveMeeting = useCallback(async () => {
     // Stop all tracks
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop())
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop())
     }
     if (screenStream) {
       screenStream.getTracks().forEach((track) => track.stop())
@@ -287,7 +352,7 @@ export function useWebRTC(meetingId, currentUser, participants) {
 
     // Cleanup Firebase signaling data
     await cleanupSignaling(meetingId, currentUser.uid)
-  }, [localStream, screenStream, meetingId, currentUser])
+  }, [localStreamRef, screenStream, meetingId, currentUser])
 
   return {
     localStream,
@@ -296,10 +361,12 @@ export function useWebRTC(meetingId, currentUser, participants) {
     isVideoOn,
     isMicOn,
     isPresenting,
+    videoQuality,
     toggleVideo,
     toggleMic,
     startScreenShare,
     stopScreenShare,
     leaveMeeting,
+    changeVideoQuality,
   }
 }

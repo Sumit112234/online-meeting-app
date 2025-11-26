@@ -16,12 +16,19 @@ export function PreJoin({ meeting, onJoin, isGuest, userName: initialName }) {
   const videoRef = useRef(null)
 
   useEffect(() => {
-    // Get user media for preview
     const getMedia = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 },
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
         })
         setStream(mediaStream)
 
@@ -38,7 +45,6 @@ export function PreJoin({ meeting, onJoin, isGuest, userName: initialName }) {
     getMedia()
 
     return () => {
-      // Cleanup
       if (stream) {
         stream.getTracks().forEach((track) => track.stop())
       }
@@ -70,13 +76,13 @@ export function PreJoin({ meeting, onJoin, isGuest, userName: initialName }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-black dark:via-purple-950/30 dark:to-black p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle className="text-2xl">Ready to join?</CardTitle>
+          <CardTitle className="text-xl md:text-2xl">Ready to join?</CardTitle>
           <CardDescription>Meeting: {meeting?.title || "Untitled Meeting"}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 md:space-y-6">
           {/* Name Input for Guests */}
           {isGuest && (
             <div className="space-y-2">
@@ -97,8 +103,8 @@ export function PreJoin({ meeting, onJoin, isGuest, userName: initialName }) {
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover mirror" />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                <Avatar className="h-24 w-24">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-3xl">
+                <Avatar className="h-16 w-16 md:h-24 md:w-24">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl md:text-3xl">
                     {(name || initialName || "U")[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -107,22 +113,22 @@ export function PreJoin({ meeting, onJoin, isGuest, userName: initialName }) {
           </div>
 
           {/* Controls */}
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-3 md:gap-4">
             <Button
               size="lg"
               variant={micOn ? "default" : "destructive"}
               onClick={toggleMic}
-              className="rounded-full h-14 w-14"
+              className="rounded-full h-12 w-12 md:h-14 md:w-14"
             >
-              {micOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+              {micOn ? <Mic className="h-5 w-5 md:h-6 md:w-6" /> : <MicOff className="h-5 w-5 md:h-6 md:w-6" />}
             </Button>
             <Button
               size="lg"
               variant={cameraOn ? "default" : "destructive"}
               onClick={toggleCamera}
-              className="rounded-full h-14 w-14"
+              className="rounded-full h-12 w-12 md:h-14 md:w-14"
             >
-              {cameraOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+              {cameraOn ? <Video className="h-5 w-5 md:h-6 md:w-6" /> : <VideoOff className="h-5 w-5 md:h-6 md:w-6" />}
             </Button>
           </div>
         </CardContent>

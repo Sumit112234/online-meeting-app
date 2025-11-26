@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import { ref, push, set } from "firebase/database"
+import { ref, set } from "firebase/database"
 import { database } from "@/lib/firebase"
+import { generateMeetingId } from "@/lib/utils"
 
 export async function POST(request) {
   try {
@@ -10,8 +11,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const meetingRef = push(ref(database, "meetings"))
-    const meetingId = meetingRef.key
+    const meetingId = generateMeetingId()
 
     const meetingData = {
       id: meetingId,
@@ -28,7 +28,7 @@ export async function POST(request) {
       },
     }
 
-    await set(meetingRef, meetingData)
+    await set(ref(database, `meetings/${meetingId}`), meetingData)
 
     return NextResponse.json({ meetingId, success: true })
   } catch (error) {

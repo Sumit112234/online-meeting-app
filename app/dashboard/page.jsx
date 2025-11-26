@@ -11,6 +11,7 @@ import { apiClient } from "@/lib/api-client"
 import { ref, get } from "firebase/database"
 import { database } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
+import { formatMeetingId } from "@/lib/utils"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -96,30 +97,32 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4 sm:py-6 md:py-8">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, {user.displayName || profile?.name || "User"}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">Dashboard</h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Welcome back, {user.displayName || profile?.name || "User"}
+              </p>
             </div>
-            <Button size="lg" onClick={handleNewMeeting} disabled={creating}>
+            <Button size="lg" onClick={handleNewMeeting} disabled={creating} className="w-full sm:w-auto">
               <Plus className="mr-2 h-5 w-5" />
               {creating ? "Creating..." : "New Meeting"}
             </Button>
           </div>
 
           {/* Quick Actions */}
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <Card
               className="cursor-pointer hover:shadow-lg hover:border-primary/50 transition-all"
               onClick={handleNewMeeting}
             >
               <CardHeader>
-                <Video className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Start Instant Meeting</CardTitle>
-                <CardDescription>Begin a meeting right now</CardDescription>
+                <Video className="h-6 w-6 sm:h-8 sm:w-8 text-primary mb-2" />
+                <CardTitle className="text-base sm:text-lg">Start Instant Meeting</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Begin a meeting right now</CardDescription>
               </CardHeader>
             </Card>
 
@@ -128,17 +131,17 @@ export default function DashboardPage() {
               onClick={() => router.push("/")}
             >
               <CardHeader>
-                <Users className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Join Meeting</CardTitle>
-                <CardDescription>Enter a code to join</CardDescription>
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary mb-2" />
+                <CardTitle className="text-base sm:text-lg">Join Meeting</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Enter a code to join</CardDescription>
               </CardHeader>
             </Card>
 
-            <Card className="hover:shadow-lg hover:border-primary/50 transition-all">
+            <Card className="hover:shadow-lg hover:border-primary/50 transition-all sm:col-span-2 md:col-span-1">
               <CardHeader>
-                <Clock className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Schedule Meeting</CardTitle>
-                <CardDescription>Coming soon</CardDescription>
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-primary mb-2" />
+                <CardTitle className="text-base sm:text-lg">Schedule Meeting</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Coming soon</CardDescription>
               </CardHeader>
             </Card>
           </div>
@@ -146,39 +149,52 @@ export default function DashboardPage() {
           {/* Recent Meetings */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Meetings</CardTitle>
-              <CardDescription>Your meeting history</CardDescription>
+              <CardTitle className="text-lg sm:text-xl">Recent Meetings</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Your meeting history</CardDescription>
             </CardHeader>
             <CardContent>
               {loadingMeetings ? (
-                <p className="text-center text-muted-foreground py-8">Loading meetings...</p>
+                <p className="text-center text-muted-foreground py-8 text-sm">Loading meetings...</p>
               ) : meetings.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No meetings yet. Start your first meeting!</p>
+                <p className="text-center text-muted-foreground py-8 text-sm">
+                  No meetings yet. Start your first meeting!
+                </p>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {meetings.map((meeting) => (
                     <div
                       key={meeting.id}
-                      className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 hover:border-primary/30 transition-all"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 border border-border rounded-lg hover:bg-muted/50 hover:border-primary/30 transition-all"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Video className="h-6 w-6 text-primary" />
+                      <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                          <Video className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                         </div>
-                        <div>
-                          <h3 className="font-semibold">{meeting.title}</h3>
-                          <p className="text-sm text-muted-foreground">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-sm sm:text-base truncate">{meeting.title}</h3>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            <span className="font-mono">{formatMeetingId(meeting.id)}</span>
+                            {" • "}
                             {new Date(meeting.createdAt).toLocaleDateString()} at{" "}
-                            {new Date(meeting.createdAt).toLocaleTimeString()}
+                            {new Date(meeting.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => copyMeetingLink(meeting.id)}>
-                          <Copy className="h-4 w-4 mr-2" />
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyMeetingLink(meeting.id)}
+                          className="flex-1 sm:flex-none text-xs sm:text-sm"
+                        >
+                          <Copy className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                           Copy Link
                         </Button>
-                        <Button size="sm" onClick={() => router.push(`/meet/${meeting.id}`)}>
+                        <Button
+                          size="sm"
+                          onClick={() => router.push(`/meet/${meeting.id}`)}
+                          className="flex-1 sm:flex-none text-xs sm:text-sm"
+                        >
                           Rejoin
                         </Button>
                       </div>

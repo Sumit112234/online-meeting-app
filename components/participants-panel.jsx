@@ -17,20 +17,20 @@ import {
 export function ParticipantsPanel({ participants, currentUser, isHost, onClose, onRemoveParticipant, onLowerHand }) {
   return (
     <Card className="h-full flex flex-col shadow-2xl">
-      <CardHeader className="border-b">
+      <CardHeader className="border-b p-3 sm:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Participants</CardTitle>
-            <CardDescription>{participants.length} in meeting</CardDescription>
+            <CardTitle className="text-base sm:text-lg">Participants</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">{participants.length} in meeting</CardDescription>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 sm:h-10 sm:w-10">
             <X className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
 
       <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full p-4">
+        <ScrollArea className="h-full p-3 sm:p-4">
           <div className="space-y-2">
             {participants.map((participant) => {
               const isCurrentUser = participant.uid === currentUser?.uid
@@ -39,24 +39,24 @@ export function ParticipantsPanel({ participants, currentUser, isHost, onClose, 
               return (
                 <div
                   key={participant.uid}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-2 sm:p-3 rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <Avatar>
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
                       <AvatarImage src={participant.photoURL || "/placeholder.svg"} alt={participant.name} />
                       <AvatarFallback className={participant.isGuest ? participant.avatarColor : "bg-primary"}>
                         {participant.name?.[0]?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                        <p className="font-medium text-xs sm:text-sm truncate">
                           {participant.name}
                           {isCurrentUser && " (You)"}
                         </p>
-                        {isParticipantHost && <Crown className="h-3 w-3 text-yellow-500" />}
+                        {isParticipantHost && <Crown className="h-3 w-3 text-yellow-500 shrink-0" />}
                         {participant.isGuest && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-[10px] sm:text-xs">
                             Guest
                           </Badge>
                         )}
@@ -73,7 +73,7 @@ export function ParticipantsPanel({ participants, currentUser, isHost, onClose, 
                           <VideoOff className="h-3 w-3 text-muted-foreground" />
                         )}
                         {participant.hasRaisedHand && (
-                          <Badge variant="secondary" className="text-xs bg-yellow-500 text-white">
+                          <Badge variant="secondary" className="text-[10px] sm:text-xs bg-yellow-500 text-white">
                             <Hand className="h-2 w-2 mr-1" />
                             Raised hand
                           </Badge>
@@ -86,7 +86,7 @@ export function ParticipantsPanel({ participants, currentUser, isHost, onClose, 
                   {isHost && !isCurrentUser && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 sm:h-10 sm:w-10">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

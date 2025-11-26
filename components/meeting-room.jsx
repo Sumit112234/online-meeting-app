@@ -26,11 +26,13 @@ export function MeetingRoom({ meetingId, currentUser }) {
     isVideoOn,
     isMicOn,
     isPresenting,
+    videoQuality,
     toggleVideo,
     toggleMic,
     startScreenShare,
     stopScreenShare,
     leaveMeeting,
+    changeVideoQuality,
   } = useWebRTC(meetingId, currentUser, participants)
 
   const [showChat, setShowChat] = useState(false)
@@ -116,8 +118,13 @@ export function MeetingRoom({ meetingId, currentUser }) {
     <div className="h-screen flex flex-col bg-gradient-to-br from-black via-purple-950/30 to-black dark:from-black dark:via-purple-950/50 dark:to-black relative overflow-hidden">
       <MeetingHeader meeting={meeting} participantCount={participants.length} meetingId={meetingId} />
 
-      <div className="flex-1 flex relative">
-        <div className={cn("flex-1 transition-all duration-300", (showChat || showParticipants) && "mr-96")}>
+      <div className="flex-1 flex relative overflow-hidden">
+        <div
+          className={cn(
+            "flex-1 transition-all duration-300",
+            (showChat || showParticipants) && "lg:mr-96 hidden lg:block",
+          )}
+        >
           <VideoGrid
             participants={participants}
             localStream={localStream}
@@ -129,7 +136,7 @@ export function MeetingRoom({ meetingId, currentUser }) {
         </div>
 
         {(showChat || showParticipants) && (
-          <div className="fixed right-0 top-0 bottom-0 w-96 bg-background border-l border-border z-20 pt-16 pb-32">
+          <div className="fixed lg:absolute right-0 top-0 bottom-0 w-full lg:w-96 bg-background border-l border-border z-20 pt-16 pb-24 md:pb-32">
             {showChat && (
               <ChatPanel meetingId={meetingId} currentUser={currentUser} onClose={() => setShowChat(false)} />
             )}
@@ -158,6 +165,7 @@ export function MeetingRoom({ meetingId, currentUser }) {
         isMicOn={isMicOn}
         isPresenting={isPresenting}
         hasRaisedHand={hasRaisedHand}
+        videoQuality={videoQuality}
         onToggleVideo={toggleVideo}
         onToggleMic={toggleMic}
         onToggleScreenShare={handleToggleScreenShare}
@@ -171,6 +179,7 @@ export function MeetingRoom({ meetingId, currentUser }) {
           setShowParticipants(!showParticipants)
           setShowChat(false)
         }}
+        onChangeVideoQuality={changeVideoQuality}
         onLeave={handleLeave}
         unreadMessages={unreadMessages}
       />

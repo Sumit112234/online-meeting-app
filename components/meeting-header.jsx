@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Clock, Copy, Video } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { formatMeetingId } from "@/lib/utils"
 
 export function MeetingHeader({ meeting, participantCount, meetingId }) {
   const { toast } = useToast()
@@ -34,18 +35,23 @@ export function MeetingHeader({ meeting, participantCount, meetingId }) {
   }
 
   return (
-    <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent z-10">
-      <div className="flex items-center gap-4">
+    <div className="absolute top-0 left-0 right-0 p-2 sm:p-3 md:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 bg-gradient-to-b from-black/80 to-transparent z-10">
+      <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <Video className="h-5 w-5 text-white" />
-          <span className="text-white font-semibold">{meeting?.title || "Meeting"}</span>
+          <Video className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+          <span className="text-white font-semibold text-sm sm:text-base truncate max-w-[150px] sm:max-w-none">
+            {meeting?.title || "Meeting"}
+          </span>
         </div>
-        <Badge variant="secondary" className="bg-white/20 text-white border-0">
+        <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs">
           <Clock className="h-3 w-3 mr-1" />
           {duration}
         </Badge>
-        <Badge variant="secondary" className="bg-white/20 text-white border-0">
+        <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs hidden sm:flex">
           {participantCount} {participantCount === 1 ? "Participant" : "Participants"}
+        </Badge>
+        <Badge variant="secondary" className="bg-white/20 text-white border-0 text-xs font-mono">
+          {formatMeetingId(meetingId)}
         </Badge>
       </div>
 
@@ -53,10 +59,11 @@ export function MeetingHeader({ meeting, participantCount, meetingId }) {
         variant="secondary"
         size="sm"
         onClick={copyMeetingLink}
-        className="bg-white/20 hover:bg-white/30 text-white border-0"
+        className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm w-full sm:w-auto"
       >
-        <Copy className="h-4 w-4 mr-2" />
-        Copy invite link
+        <Copy className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+        <span className="hidden sm:inline">Copy invite link</span>
+        <span className="sm:hidden">Copy link</span>
       </Button>
     </div>
   )
