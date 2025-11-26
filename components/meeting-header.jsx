@@ -2,12 +2,12 @@
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, Copy, Video } from "lucide-react"
+import { Clock, Copy, Video, Users } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { formatMeetingId } from "@/lib/utils"
 
-export function MeetingHeader({ meeting, participantCount, meetingId }) {
+export function MeetingHeader({ meeting, participantCount, meetingId, isHost, onShowWaitingRoom }) {
   const { toast } = useToast()
   const [duration, setDuration] = useState("00:00")
 
@@ -55,16 +55,30 @@ export function MeetingHeader({ meeting, participantCount, meetingId }) {
         </Badge>
       </div>
 
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={copyMeetingLink}
-        className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm w-full sm:w-auto"
-      >
-        <Copy className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-        <span className="hidden sm:inline">Copy invite link</span>
-        <span className="sm:hidden">Copy link</span>
-      </Button>
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        {isHost && onShowWaitingRoom && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onShowWaitingRoom}
+            className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm"
+          >
+            <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+            <span className="hidden sm:inline">Waiting Room</span>
+          </Button>
+        )}
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={copyMeetingLink}
+          className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs sm:text-sm flex-1 sm:flex-none"
+        >
+          <Copy className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+          <span className="hidden sm:inline">Copy invite link</span>
+          <span className="sm:hidden">Copy link</span>
+        </Button>
+      </div>
     </div>
   )
 }
