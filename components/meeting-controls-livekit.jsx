@@ -12,14 +12,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { useLocalParticipant, useRoomContext } from "@livekit/components-react"
-import { Track } from "livekit-client"
+import { useLocalParticipant } from "@livekit/components-react"
 import { useState } from "react"
+import { updateParticipantState } from "@/lib/realtime"
 
-export function MeetingControls({ hasRaisedHand, onToggleHand, onToggleChat, onToggleParticipants, onLeave, isHost }) {
+export function MeetingControlsLivekit({
+  meetingId,
+  participant,
+  isHost,
+  onLeave,
+  onToggleChat,
+  onToggleParticipants,
+  showChat,
+  showParticipants,
+}) {
   const { localParticipant } = useLocalParticipant()
-  const room = useRoomContext()
   const [videoQuality, setVideoQuality] = useState("720p")
+  const [hasRaisedHand, setHasRaisedHand] = useState(false)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
 
   const isMicEnabled = localParticipant?.isMicrophoneEnabled ?? false
@@ -27,37 +36,44 @@ export function MeetingControls({ hasRaisedHand, onToggleHand, onToggleChat, onT
 
   const toggleMic = async () => {
     await localParticipant?.setMicrophoneEnabled(!isMicEnabled)
+    await updateParticipantState(meetingId, participant.id, { isMicOn: !isMicEnabled })
   }
 
   const toggleCamera = async () => {
     await localParticipant?.setCameraEnabled(!isCameraEnabled)
+    await updateParticipantState(meetingId, participant.id, { isVideoOn: !isCameraEnabled })
   }
 
   const toggleScreenShare = async () => {
-    if (isScreenSharing) {
-      await localParticipant?.setScreenShareEnabled(false)
+    try {
+      if (isScreenSharing) {
+        await localParticipant?.setScreenShareEnabled(false)
+        setIsScreenSharing(false)
+        await updateParticipantState(meetingId, participant.id, { isPresenting: false })
+      } else {
+        await localParticipant?.setScreenShareEnabled(true, {
+          audio: true, // Include system audio
+          selfBrowserSurface: "include",
+          surfaceSwitching: "include",
+        })
+        setIsScreenSharing(true)
+        await updateParticipantState(meetingId, participant.id, { isPresenting: true })
+      }
+    } catch (error) {
+      console.error("[v0] Screen share error:", error)
       setIsScreenSharing(false)
-    } else {
-      await localParticipant?.setScreenShareEnabled(true)
-      setIsScreenSharing(true)
     }
+  }
+
+  const toggleRaiseHand = async () => {
+    const newState = !hasRaisedHand
+    setHasRaisedHand(newState)
+    await updateParticipantState(meetingId, participant.id, { hasRaisedHand: newState })
   }
 
   const changeVideoQuality = async (quality) => {
     setVideoQuality(quality)
-    const videoTrack = localParticipant?.getTrackPublication(Track.Source.Camera)
-    if (videoTrack?.track) {
-      // Quality presets
-      const qualityMap = {
-        "360p": { width: 640, height: 360, frameRate: 15 },
-        "480p": { width: 854, height: 480, frameRate: 20 },
-        "720p": { width: 1280, height: 720, frameRate: 30 },
-        "1080p": { width: 1920, height: 1080, frameRate: 30 },
-      }
-
-      const constraints = qualityMap[quality] || qualityMap["720p"]
-      // Note: Livekit handles quality internally, this is for UI feedback
-    }
+    // Livekit handles quality automatically, this is for UI feedback
   }
 
   return (
@@ -135,7 +151,7 @@ export function MeetingControls({ hasRaisedHand, onToggleHand, onToggleChat, onT
                 <Button
                   size="lg"
                   variant={hasRaisedHand ? "secondary" : "outline"}
-                  onClick={onToggleHand}
+                  onClick={toggleRaiseHand}
                   className={cn(
                     "rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14",
                     hasRaisedHand && "bg-yellow-500 hover:bg-yellow-600 text-white",
@@ -154,9 +170,9 @@ export function MeetingControls({ hasRaisedHand, onToggleHand, onToggleChat, onT
               <TooltipTrigger asChild>
                 <Button
                   size="lg"
-                  variant="outline"
+                  variant={showChat ? "secondary" : "outline"}
                   onClick={onToggleChat}
-                  className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 bg-transparent"
+                  className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
                 >
                   <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                 </Button>
@@ -171,9 +187,9 @@ export function MeetingControls({ hasRaisedHand, onToggleHand, onToggleChat, onT
               <TooltipTrigger asChild>
                 <Button
                   size="lg"
-                  variant="outline"
+                  variant={showParticipants ? "secondary" : "outline"}
                   onClick={onToggleParticipants}
-                  className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 bg-transparent"
+                  className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
                 >
                   <Users className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
                 </Button>
@@ -236,3 +252,5 @@ export function MeetingControls({ hasRaisedHand, onToggleHand, onToggleChat, onT
     </div>
   )
 }
+
+export { MeetingControlsLivekit as MeetingControls }

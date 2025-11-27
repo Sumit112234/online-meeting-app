@@ -1,15 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { LiveKitRoom, VideoConference, RoomAudioRenderer } from "@livekit/components-react"
+import { LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react"
 import "@livekit/components-styles"
 import { getLivekitToken, LIVEKIT_CONFIG } from "@/lib/livekit-config"
 import { Loader2 } from "lucide-react"
-import { MeetingControls } from "./meeting-controls"
 import { MeetingHeader } from "./meeting-header"
 import { ChatPanel } from "./chat-panel"
 import { ParticipantsPanel } from "./participants-panel"
 import { AdminWaitingRoom } from "./admin-waiting-room"
+import { CustomVideoGrid } from "./custom-video-grid"
+import { MeetingControlsLivekit } from "./meeting-controls-livekit"
 
 export function LivekitRoom({ meetingId, participant, isHost, onLeave }) {
   const [token, setToken] = useState("")
@@ -83,9 +84,8 @@ export function LivekitRoom({ meetingId, participant, isHost, onLeave }) {
 
         {/* Main Content Area */}
         <div className="relative flex flex-1 overflow-hidden">
-          {/* Video Grid */}
           <div className="flex-1">
-            <VideoConference chatMessageFormatter={(message) => message} SettingsComponent={null} />
+            <CustomVideoGrid />
           </div>
 
           {/* Chat Panel */}
@@ -107,8 +107,7 @@ export function LivekitRoom({ meetingId, participant, isHost, onLeave }) {
           )}
         </div>
 
-        {/* Controls */}
-        <MeetingControls
+        <MeetingControlsLivekit
           meetingId={meetingId}
           participant={participant}
           isHost={isHost}

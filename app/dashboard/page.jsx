@@ -5,13 +5,23 @@ import { useRouter } from "next/navigation"
 import { Navbar } from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Video, Clock, Users, Copy, Plus } from "lucide-react"
+import { Video, Clock, Users, Copy, Plus, Trash2 } from "lucide-react"
 import { useAuthContext } from "@/components/auth-provider"
 import { apiClient } from "@/lib/api-client"
 import { ref, get } from "firebase/database"
 import { database } from "@/lib/firebase"
 import { useToast } from "@/hooks/use-toast"
 import { formatMeetingId } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -20,6 +30,8 @@ export default function DashboardPage() {
   const [meetings, setMeetings] = useState([])
   const [creating, setCreating] = useState(false)
   const [loadingMeetings, setLoadingMeetings] = useState(true)
+  const [deletingMeetingId, setDeletingMeetingId] = useState(null)
+  const [meetingToDelete, setMeetingToDelete] = useState(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -70,6 +82,30 @@ export default function DashboardPage() {
       })
     } else {
       router.push(`/meet/${meetingId}`)
+    }
+  }
+
+  const handleDeleteMeeting = async () => {
+    if (!meetingToDelete) return
+
+    setDeletingMeetingId(meetingToDelete.id)
+    const { error } = await apiClient.deleteMeeting(meetingToDelete.id)
+    setDeletingMeetingId(null)
+    setMeetingToDelete(null)
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error,
+      })
+    } else {
+      toast({
+        title: "Meeting deleted",
+        description: "The meeting has been successfully deleted",
+      })
+      // Refresh the meetings list
+      loadUserMeetings()
     }
   }
 
@@ -187,8 +223,8 @@ export default function DashboardPage() {
                           onClick={() => copyMeetingLink(meeting.id)}
                           className="flex-1 sm:flex-none text-xs sm:text-sm"
                         >
-                          <Copy className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                          Copy Link
+                          <Copy className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Copy Link</span>
                         </Button>
                         <Button
                           size="sm"
@@ -196,6 +232,15 @@ export default function DashboardPage() {
                           className="flex-1 sm:flex-none text-xs sm:text-sm"
                         >
                           Rejoin
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setMeetingToDelete(meeting)}
+                          disabled={deletingMeetingId === meeting.id}
+                          className="flex-none text-xs sm:text-sm"
+                        >
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
@@ -206,6 +251,24 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      <AlertDialog open={!!meetingToDelete} onOpenChange={() => setMeetingToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Meeting?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this meeting? This action cannot be undone and will remove all meeting
+              data including chat messages and participant history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMeeting} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
